@@ -1,0 +1,19 @@
+/*
+ * This app's visual world, in the design-floor token names (ADR-0007 layer 2).
+ * Change the values here, then record them in DESIGN.md "Tokens".
+ * Keep text contrast at 4.5:1 or more against --color-bg and --color-surface.
+ */
+:root {
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-fg: #1d211f;
+  --color-fg-muted: #555b57;
+  --color-accent: #1f5f4a;
+  --color-accent-fg: #ffffff;
+  --color-border: #c9cbc4;
+  --color-focus: #1f5f4a;
+
+  /* next/font/local exposes the Noto faces as these variables. */
+  --font-sans: var(--font-sans-thai), Arial, sans-serif;
+  --font-serif: var(--font-serif-thai), Georgia, "Times New Roman", serif;
+}

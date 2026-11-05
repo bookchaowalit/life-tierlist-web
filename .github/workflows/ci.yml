@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Public repo: GitHub-hosted runners. A private copy of this starter must move these jobs to the
+# self-hosted runners (CI hosting policy) and run the design floor locally until the runner image
+# carries Chromium's libraries.
+jobs:
+  # Shared Node CI: npm ci, lint, typecheck, Vitest with a line-coverage gate, then the build.
+  web:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-node.yml@87dc5e1c7e0416886a6371d5a101bb2ccba38edd # v1.1.1
+    with:
+      require-tests: true
+      coverage-threshold: "80"
+      build-command: NEXT_TELEMETRY_DISABLED=1 npm run check
+
+  # Shared security scan: gitleaks, Semgrep, OSV-Scanner, Trivy.
+  security:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/security.yml@87dc5e1c7e0416886a6371d5a101bb2ccba38edd # v1.1.1
+
+  # ADR-0007 design floor (12 rules, 5 widths) on the static export in out/.
+  design-floor:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/design-floor.yml@df695c12bdc6822587877d5fe55d3af31d5f66db # v1.5.11
+    with:
+      build-command: NEXT_TELEMETRY_DISABLED=1 npm run build
