@@ -5,16 +5,17 @@ import { describe, expect, it, vi } from "vitest";
 import NotFound from "@/app/not-found";
 import Home from "@/app/page";
 import RootLayout from "@/app/layout";
-import { features, site } from "@/lib/site";
+import { site } from "@/lib/site";
 
 // next/font/local only works inside a Next build; the layout just needs the CSS variable names.
 vi.mock("next/font/local", () => ({ default: () => ({ variable: "font-var" }) }));
 
 describe("pages", () => {
-  it("home renders the promise, every feature and one main landmark", () => {
+  it("home renders the promise, the sample board and one main landmark", () => {
     const html = renderToString(<Home />);
     expect(html).toContain(site.promise);
-    for (const feature of features) expect(html).toContain(feature.title);
+    expect(html).toContain("ภาพรวม");
+    expect(html).toContain("ข้าวมันไก่");
     expect(html.match(/<main id="main-content"/g)).toHaveLength(1);
   });
 

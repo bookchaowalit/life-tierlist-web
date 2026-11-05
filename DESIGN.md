@@ -21,7 +21,22 @@ Line-height: ทุกขนาด text ของ Tailwind ใช้ `--leading-
 
 Dark mode: ไม่มี (เพิ่มได้ด้วย `data-theme="dark"` ตาม `tailwind/v4.css`) Waivers: ไม่มี
 
+## Tier fills
+
+สีพื้นหลังแถว (`lib/tierlist.ts` `TIER_FILLS`) ใช้ข้อความ `--color-fg` ทุกสีได้ contrast ≥ 7:1
+
+| แถว | สี |
+|---|---|
+| S | `#f6b3ae` |
+| A | `#f8cf9f` |
+| B | `#f3e39a` |
+| C | `#c4e3b0` |
+| D | `#b5d4ee` |
+| แถวที่เพิ่มหรือเปลี่ยนชื่อจนไม่ตรง | ใช้สีตามลำดับแถว ถ้าเกิน 5 แถวใช้ `#dcdcd6` |
+
 ## Components
 
 - `.btn` + `.btn-primary` / `.btn-secondary`: สูงอย่างน้อย 44 px
+- ของในแถว: ปุ่มสูง 44 px, `aria-pressed` ตอนเลือก; ปุ่ม "ย้ายมาที่นี่" ขึ้นในทุกแถวที่ยังไม่มีชิ้นที่เลือก
+- แถบภาพรวม: `role="img"` พร้อม `aria-label` บอกจำนวนทุกแถว
 - `.skip-link`: ลิงก์แรกของทุกหน้า ไปที่ `#main-content`

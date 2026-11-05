@@ -1,5 +1,5 @@
 {
-  "name": "web-starter",
+  "name": "life-tierlist-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,12 +19,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.15.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.5",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.3.4",
     "typescript": "^5.8.3",
     "vitest": "^5.0.5"

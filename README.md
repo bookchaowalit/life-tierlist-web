@@ -1,3 +1,16 @@
+# life-tierlist-web
+
+Tier list แยกตามหมวด จัดอันดับ S–D ได้หลายหมวด แล้วดูภาพรวมทุกหมวดในหน้าเดียว ข้อมูลเก็บในเบราว์เซอร์ (`localStorage`) ไม่มี server รายละเอียดใน [PRODUCT.md](PRODUCT.md)
+
+```bash
+npm install
+npm run dev
+```
+
+เริ่มจาก [web-starter](https://github.com/bookchaowalit/web-starter)@51c222b ส่วนด้านล่างคือคู่มือของ starter
+
+---
+
 # web-starter
 
 จุดเริ่มต้นของเว็บใหม่ทุกตัว: Next.js 16 static export ที่ผ่าน [design floor ADR-0007](https://github.com/bookchaowalit/architecture-docs/blob/main/design-floor/FLOOR.md) ทั้ง 12 กฎตั้งแต่ commit แรก
