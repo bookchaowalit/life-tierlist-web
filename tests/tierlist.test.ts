@@ -127,6 +127,26 @@ describe('reducer', () => {
     expect(far.categories[0].pool).toEqual([mango, apple]);
   });
 
+  it('drops before the target when moving forward or backward inside the same row', () => {
+    const newId = ids();
+    const base: State = { version: 1, activeId: null, categories: [makeCategory('X', ['A', 'B', 'C'], newId)] };
+    const run = (st: State, a: Action) => reducer(st, a, newId);
+    const c = base.categories[0];
+    const [a, b, cc] = c.pool;
+    const label = (st: State) => st.categories[0].pool.map((id) => st.categories[0].items[id].label);
+    // Drop A onto C (index 2): A lands just before C.
+    expect(label(run(base, { type: 'moveItem', categoryId: c.id, itemId: a, to: POOL, index: 2 }))).toEqual(['B', 'A', 'C']);
+    // Drop C onto A (index 0): C lands first.
+    expect(label(run(base, { type: 'moveItem', categoryId: c.id, itemId: cc, to: POOL, index: 0 }))).toEqual(['C', 'A', 'B']);
+    // Same inside a tier row.
+    const s0 = c.tiers[0].id;
+    let t = run(base, { type: 'moveItem', categoryId: c.id, itemId: a, to: s0 });
+    t = run(t, { type: 'moveItem', categoryId: c.id, itemId: b, to: s0 });
+    t = run(t, { type: 'moveItem', categoryId: c.id, itemId: cc, to: s0 });
+    t = run(t, { type: 'moveItem', categoryId: c.id, itemId: a, to: s0, index: 2 });
+    expect(t.categories[0].tiers[0].itemIds).toEqual([b, a, cc]);
+  });
+
   it('renames tiers up to 12 characters, ignoring blanks', () => {
     const { state, run, cat } = setup();
     const t = cat.tiers[0].id;
@@ -190,6 +210,16 @@ describe('parseState', () => {
       { version: 1, categories: [{ ...c, tiers: [{ id: 't', label: 'S', itemIds: [1] }] }] },
     ];
     for (const raw of bad) expect(parseState(raw)).toBeNull();
+  });
+
+  it('rejects duplicate category ids and duplicate or reserved tier ids', () => {
+    const good = initialState(ids());
+    const c = good.categories[0];
+    expect(parseState({ ...good, categories: [c, { ...c }] })).toBeNull();
+    const dupTier = { ...c, tiers: [c.tiers[0], { ...c.tiers[1], id: c.tiers[0].id }] };
+    expect(parseState({ ...good, categories: [dupTier] })).toBeNull();
+    const poolTier = { ...c, tiers: [{ ...c.tiers[0], id: POOL }] };
+    expect(parseState({ ...good, categories: [poolTier] })).toBeNull();
   });
 
   it('drops dangling and duplicate ids and rescues orphans to the pool', () => {

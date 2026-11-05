@@ -135,12 +135,16 @@ export function reducer(state: State, action: Action, newId: IdFn): State {
       return updateCategory(state, action.categoryId, (c) => {
         if (!c.items[action.itemId]) return c;
         if (action.to !== POOL && !c.tiers.some((t) => t.id === action.to)) return c;
+        // The drop index counts the item itself when it moves forward inside its own row.
+        const from = action.to === POOL ? c.pool : c.tiers.find((t) => t.id === action.to)!.itemIds;
+        const src = from.indexOf(action.itemId);
+        const index = action.index !== undefined && src !== -1 && src < action.index ? action.index - 1 : action.index;
         const base = detach(c, action.itemId);
-        if (action.to === POOL) return { ...base, pool: insertAt(base.pool, action.itemId, action.index) };
+        if (action.to === POOL) return { ...base, pool: insertAt(base.pool, action.itemId, index) };
         return {
           ...base,
           tiers: base.tiers.map((t) =>
-            t.id === action.to ? { ...t, itemIds: insertAt(t.itemIds, action.itemId, action.index) } : t,
+            t.id === action.to ? { ...t, itemIds: insertAt(t.itemIds, action.itemId, index) } : t,
           ),
         };
       });
@@ -192,6 +196,7 @@ export function parseState(raw: unknown): State | null {
     if (!rc || typeof rc !== 'object') return null;
     const c = rc as Record<string, unknown>;
     if (!isStr(c.id) || !isStr(c.name) || !Array.isArray(c.tiers) || !isStrList(c.pool)) return null;
+    if (categories.some((x) => x.id === c.id)) return null;
     if (!c.items || typeof c.items !== 'object') return null;
     const items: Record<string, Item> = {};
     for (const [key, ri] of Object.entries(c.items as Record<string, unknown>)) {
@@ -202,9 +207,13 @@ export function parseState(raw: unknown): State | null {
     const seen = new Set<string>();
     const keep = (ids: string[]) => ids.filter((id) => items[id] && !seen.has(id) && (seen.add(id), true));
     const tiers: Tier[] = [];
+    const tierIds = new Set<string>();
     for (const rt of c.tiers as unknown[]) {
       const t = rt as Record<string, unknown> | null;
       if (!t || !isStr(t.id) || !isStr(t.label) || !isStrList(t.itemIds)) return null;
+      // Duplicate row ids would make one move land in two rows.
+      if (tierIds.has(t.id) || t.id === POOL) return null;
+      tierIds.add(t.id);
       tiers.push({ id: t.id, label: clean(t.label).slice(0, 12), itemIds: keep(t.itemIds) });
     }
     const pool = keep(c.pool);

@@ -50,22 +50,28 @@ function safeStorage(): Storage | undefined {
   }
 }
 
+type Board = { state: State; hydrated: boolean };
+type BoardAction = Action | { type: 'hydrate'; saved: State | null };
+
+function boardReducer(b: Board, a: BoardAction): Board {
+  if (a.type === 'hydrate') return { state: a.saved ?? b.state, hydrated: true };
+  return { ...b, state: reducer(b.state, a, newId) };
+}
+
 export default function TierBoard({ initial }: { initial?: State }) {
-  const [state, dispatch] = useReducer((s: State, a: Action) => reducer(s, a, newId), initial ?? seedState());
-  // Set once the saved board is read, so the seed board never overwrites it.
-  const loaded = useRef(false);
+  // hydrated lives in committed state, not a ref, so a Strict Mode effect replay before the
+  // saved board is read can never write the seed board over it.
+  const [board, dispatch] = useReducer(boardReducer, { state: initial ?? seedState(), hydrated: false });
+  const { state, hydrated } = board;
   const [selected, setSelected] = useState<string | null>(null);
 
-  // Declared before the load effect so it runs first on mount, while loaded is still false.
   useEffect(() => {
-    if (loaded.current) persist(state);
-  }, [state]);
+    dispatch({ type: 'hydrate', saved: loadSaved(safeStorage()) });
+  }, []);
 
   useEffect(() => {
-    loaded.current = true;
-    const saved = loadSaved(safeStorage());
-    if (saved) dispatch({ type: 'replace', state: saved });
-  }, []);
+    if (hydrated) persist(state);
+  }, [state, hydrated]);
 
   const active = state.categories.find((c) => c.id === state.activeId) ?? null;
 

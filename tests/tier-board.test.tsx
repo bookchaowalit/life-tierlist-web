@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TierBoard, { STORAGE_KEY, loadSaved, newId } from '@/app/tier-board';
@@ -139,6 +140,15 @@ describe('TierBoard', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     render(<TierBoard />);
     expect(screen.getByRole('heading', { level: 3, name: 'ร้านกาแฟ' })).toBeTruthy();
+  });
+
+  it('keeps the saved board under Strict Mode effect replay', () => {
+    let n = 0;
+    const saved = { version: 1, activeId: null, categories: [makeCategory('เก็บไว้', ['X'], () => `k-${++n}`)] };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    render(<StrictMode><TierBoard /></StrictMode>);
+    expect(screen.getByRole('heading', { level: 3, name: 'เก็บไว้' })).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).categories[0].name).toBe('เก็บไว้');
   });
 
   it('exports and imports JSON backups', async () => {
