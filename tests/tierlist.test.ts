@@ -222,6 +222,24 @@ describe('parseState', () => {
     expect(parseState({ ...good, categories: [poolTier] })).toBeNull();
   });
 
+  it('keeps "__proto__" items as real entries and ignores inherited names', () => {
+    const raw = JSON.parse(
+      '{"version":1,"activeId":null,"categories":[{"id":"c","name":"C","items":{"__proto__":{"id":"__proto__","label":"P"}},' +
+        '"tiers":[{"id":"s","label":"S","itemIds":["constructor"]}],"pool":["__proto__","toString"]}]}',
+    );
+    const c = parseState(raw)!.categories[0];
+    expect(Object.keys(c.items)).toEqual(['__proto__']);
+    expect(c.pool).toEqual(['__proto__']);
+    expect(c.tiers[0].itemIds).toEqual([]);
+    expect(JSON.parse(JSON.stringify(parseState(raw))).categories[0].items.__proto__.label).toBe('P');
+    // Moving or removing an inherited name is a no-op, not a phantom item.
+    const st = parseState(raw)!;
+    const moved = reducer(st, { type: 'moveItem', categoryId: 'c', itemId: 'constructor', to: 's' }, ids());
+    expect(moved.categories[0].tiers[0].itemIds).toEqual([]);
+    const removed = reducer(st, { type: 'removeItem', categoryId: 'c', itemId: 'toString' }, ids());
+    expect(removed.categories[0]).toEqual(c);
+  });
+
   it('drops dangling and duplicate ids and rescues orphans to the pool', () => {
     const raw = {
       version: 1,

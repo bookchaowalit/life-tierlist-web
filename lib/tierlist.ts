@@ -43,6 +43,9 @@ export type Action =
 
 export type IdFn = () => string;
 
+/** Own-property check, so ids such as "constructor" or "__proto__" never match Object.prototype. */
+export const hasItem = (c: Pick<Category, 'items'>, id: string) => Object.hasOwn(c.items, id);
+
 const clean = (text: string) => text.replace(/\s+/g, ' ').trim().slice(0, MAX_LABEL);
 
 export function makeCategory(name: string, labels: string[], newId: IdFn): Category {
@@ -126,14 +129,14 @@ export function reducer(state: State, action: Action, newId: IdFn): State {
     }
     case 'removeItem':
       return updateCategory(state, action.categoryId, (c) => {
-        if (!c.items[action.itemId]) return c;
+        if (!hasItem(c, action.itemId)) return c;
         const items = { ...c.items };
         delete items[action.itemId];
         return { ...detach(c, action.itemId), items };
       });
     case 'moveItem':
       return updateCategory(state, action.categoryId, (c) => {
-        if (!c.items[action.itemId]) return c;
+        if (!hasItem(c, action.itemId)) return c;
         if (action.to !== POOL && !c.tiers.some((t) => t.id === action.to)) return c;
         // The drop index counts the item itself when it moves forward inside its own row.
         const from = action.to === POOL ? c.pool : c.tiers.find((t) => t.id === action.to)!.itemIds;
@@ -198,14 +201,15 @@ export function parseState(raw: unknown): State | null {
     if (!isStr(c.id) || !isStr(c.name) || !Array.isArray(c.tiers) || !isStrList(c.pool)) return null;
     if (categories.some((x) => x.id === c.id)) return null;
     if (!c.items || typeof c.items !== 'object') return null;
-    const items: Record<string, Item> = {};
+    // Prototype-free, so a "__proto__" key becomes an entry instead of changing the prototype.
+    const items: Record<string, Item> = Object.create(null);
     for (const [key, ri] of Object.entries(c.items as Record<string, unknown>)) {
       const it = ri as Record<string, unknown> | null;
       if (!it || !isStr(it.label) || it.id !== key) return null;
       items[key] = { id: key, label: clean(it.label) };
     }
     const seen = new Set<string>();
-    const keep = (ids: string[]) => ids.filter((id) => items[id] && !seen.has(id) && (seen.add(id), true));
+    const keep = (ids: string[]) => ids.filter((id) => Object.hasOwn(items, id) && !seen.has(id) && (seen.add(id), true));
     const tiers: Tier[] = [];
     const tierIds = new Set<string>();
     for (const rt of c.tiers as unknown[]) {

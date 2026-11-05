@@ -151,6 +151,38 @@ describe('TierBoard', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).categories[0].name).toBe('เก็บไว้');
   });
 
+  it('takes another tab\'s save and does not overwrite it by switching tabs', () => {
+    render(<TierBoard />);
+    let n = 0;
+    const newer = { version: 1, activeId: null, categories: [makeCategory('จากแท็บอื่น', ['Y'], () => `o-${++n}`)] };
+    const json = JSON.stringify(newer);
+    localStorage.setItem(STORAGE_KEY, json);
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'other', newValue: '{}' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: null }));
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: '{' }));
+    });
+    expect(screen.queryByRole('button', { name: 'จากแท็บอื่น' })).toBeNull();
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: json }));
+    });
+    expect(screen.getByRole('button', { name: 'จากแท็บอื่น' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'จากแท็บอื่น' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ภาพรวม' }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(json);
+  });
+
+  it('keeps this tab\'s open category on sync when it still exists', () => {
+    render(<TierBoard initial={seed()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ภาษาโปรแกรม' }));
+    const other = { ...seed(), activeId: seed().categories[0].id };
+    other.categories[1] = { ...other.categories[1], name: 'ภาษา' };
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: JSON.stringify(other) }));
+    });
+    expect(screen.getByRole('heading', { level: 2, name: 'ภาษา' })).toBeTruthy();
+  });
+
   it('exports and imports JSON backups', async () => {
     const createObjectURL = vi.fn(() => 'blob:x');
     const revokeObjectURL = vi.fn();

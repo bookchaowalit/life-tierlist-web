@@ -9,6 +9,7 @@ import {
   distribution,
   fillFor,
   initialState,
+  hasItem,
   parseState,
   reducer,
 } from '@/lib/tierlist';
@@ -36,7 +37,14 @@ export function loadSaved(storage: Pick<Storage, 'getItem'> | undefined): State 
 
 function persist(state: State) {
   try {
-    safeStorage()?.setItem(STORAGE_KEY, JSON.stringify(state));
+    const storage = safeStorage();
+    if (!storage) return;
+    // Write only when the categories changed. Switching tabs alone never rewrites storage, so a
+    // stale tab cannot replace a newer board just by navigating, and synced tabs do not echo
+    // each other's open-category choice back and forth.
+    const stored = loadSaved(storage);
+    if (stored && JSON.stringify(stored.categories) === JSON.stringify(state.categories)) return;
+    storage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Storage full or blocked: the board still works for this visit.
   }
@@ -51,10 +59,15 @@ function safeStorage(): Storage | undefined {
 }
 
 type Board = { state: State; hydrated: boolean };
-type BoardAction = Action | { type: 'hydrate'; saved: State | null };
+type BoardAction = Action | { type: 'hydrate'; saved: State | null } | { type: 'sync'; saved: State };
 
 function boardReducer(b: Board, a: BoardAction): Board {
   if (a.type === 'hydrate') return { state: a.saved ?? b.state, hydrated: true };
+  if (a.type === 'sync') {
+    // Another tab saved: take its board but keep this tab's open category when it still exists.
+    const keep = b.state.activeId === null || a.saved.categories.some((c) => c.id === b.state.activeId);
+    return { ...b, state: keep ? { ...a.saved, activeId: b.state.activeId } : a.saved };
+  }
   return { ...b, state: reducer(b.state, a, newId) };
 }
 
@@ -67,6 +80,14 @@ export default function TierBoard({ initial }: { initial?: State }) {
 
   useEffect(() => {
     dispatch({ type: 'hydrate', saved: loadSaved(safeStorage()) });
+    // Other tabs' saves arrive here, so a stale tab never writes an old board over a newer one.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || e.newValue === null) return;
+      const saved = loadSaved({ getItem: () => e.newValue });
+      if (saved) dispatch({ type: 'sync', saved });
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   useEffect(() => {
@@ -129,7 +150,7 @@ function TabButton({ current, onClick, children }: { current: boolean; onClick: 
       type="button"
       aria-current={current ? 'page' : undefined}
       onClick={onClick}
-      className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-4 font-semibold ${
+      className={`inline-flex min-h-11 max-w-full items-center rounded-2xl border px-4 py-1.5 text-left font-semibold wrap-anywhere ${
         current ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-surface text-fg'
       }`}
     >
@@ -148,7 +169,7 @@ type ViewProps = {
 function CategoryView({ category: c, dispatch, selected, setSelected }: ViewProps) {
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectedItem = selected ? c.items[selected] : undefined;
+  const selectedItem = selected && hasItem(c, selected) ? c.items[selected] : undefined;
 
   const move = (itemId: string, to: string, index?: number) => {
     dispatch({ type: 'moveItem', categoryId: c.id, itemId, to, index });
@@ -180,7 +201,7 @@ function CategoryView({ category: c, dispatch, selected, setSelected }: ViewProp
   return (
     <section aria-labelledby="category-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="category-title" className="font-serif text-2xl font-bold">{c.name}</h2>
+        <h2 id="category-title" className="min-w-0 font-serif text-2xl font-bold wrap-anywhere">{c.name}</h2>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary" onClick={rename}>แก้ชื่อ</button>
           <button type="button" className="btn btn-secondary" onClick={() => dispatch({ type: 'resetCategory', categoryId: c.id })}>
@@ -277,7 +298,7 @@ function Row({
     e.stopPropagation();
     setOver(false);
     const id = e.dataTransfer.getData('text/plain');
-    if (id && c.items[id]) onMove(id, row.id, index);
+    if (id && hasItem(c, id)) onMove(id, row.id, index);
   };
 
   return (
@@ -298,7 +319,7 @@ function Row({
           <button
             type="button"
             onClick={onRenameTier}
-            className="min-h-11 w-full break-words rounded-md px-1 text-xl text-fg"
+            className="min-h-11 w-full rounded-md px-1 wrap-anywhere text-xl text-fg"
             aria-label={`แถว ${row.label} แตะเพื่อแก้ชื่อ`}
           >
             {row.label}
@@ -322,7 +343,7 @@ function Row({
                 }}
                 aria-pressed={isSel}
                 onClick={() => onSelect(id)}
-                className={`inline-flex min-h-11 max-w-full cursor-grab items-center break-words rounded-md border px-3 text-left ${
+                className={`inline-flex min-h-11 max-w-full cursor-grab items-center rounded-md wrap-anywhere border px-3 text-left ${
                   isSel ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-bg text-fg'
                 }`}
               >
@@ -385,7 +406,7 @@ function OverviewCard({ category: c, onOpen }: { category: Category; onOpen: () 
   return (
     <li className="flex flex-col rounded-lg border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-serif text-xl font-bold">{c.name}</h3>
+        <h3 className="min-w-0 font-serif text-xl font-bold wrap-anywhere">{c.name}</h3>
         <span className="shrink-0 text-sm text-fg-muted">
           จัดแล้ว {ranked}/{d.total}
         </span>
@@ -417,7 +438,7 @@ function OverviewCard({ category: c, onOpen }: { category: Category; onOpen: () 
             >
               {t.label}
             </dt>
-            <dd className="min-w-0 text-sm">
+            <dd className="min-w-0 text-sm wrap-anywhere">
               {t.itemIds.length ? t.itemIds.map((id) => c.items[id].label).join(' · ') : <span className="text-fg-muted">—</span>}
             </dd>
           </div>
