@@ -58,22 +58,22 @@ function safeStorage(): Storage | undefined {
   }
 }
 
-// dirty: the current state came from an edit in this tab. Only such states are written, so a
-// board loaded from storage (or synced from another tab) is never written back over it.
-type Board = { state: State; hydrated: boolean; dirty: boolean };
+// edits counts category changes made in this tab. Each one is written exactly once, so a board
+// loaded from storage or synced from another tab, or a later category switch, never rewrites it.
+type Board = { state: State; hydrated: boolean; edits: number };
 type BoardAction = Action | { type: 'hydrate'; saved: State | null } | { type: 'sync'; saved: State };
 
 function boardReducer(b: Board, a: BoardAction): Board {
-  if (a.type === 'hydrate') return { state: a.saved ?? b.state, hydrated: true, dirty: false };
+  if (a.type === 'hydrate') return { ...b, state: a.saved ?? b.state, hydrated: true };
   if (a.type === 'sync') {
     // Another tab saved: take its board but keep this tab's open category when it still exists.
     const keep = b.state.activeId === null || a.saved.categories.some((c) => c.id === b.state.activeId);
-    return { ...b, dirty: false, state: keep ? { ...a.saved, activeId: b.state.activeId } : a.saved };
+    return { ...b, state: keep ? { ...a.saved, activeId: b.state.activeId } : a.saved };
   }
   const state = reducer(b.state, a, newId);
   if (state === b.state) return b;
   // Opening another category is not an edit, so it never writes over a newer board.
-  return { ...b, state, dirty: b.dirty || state.categories !== b.state.categories };
+  return { ...b, state, edits: state.categories === b.state.categories ? b.edits : b.edits + 1 };
 }
 
 export default function TierBoard({ initial }: { initial?: State }) {
@@ -82,9 +82,10 @@ export default function TierBoard({ initial }: { initial?: State }) {
   const [board, dispatch] = useReducer(boardReducer, {
     state: initial ?? seedState(),
     hydrated: false,
-    dirty: false,
+    edits: 0,
   });
-  const { state, hydrated, dirty } = board;
+  const { state, hydrated, edits } = board;
+  const savedEdits = useRef(0);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,8 +102,10 @@ export default function TierBoard({ initial }: { initial?: State }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated && dirty) persist(state);
-  }, [state, hydrated, dirty]);
+    if (!hydrated || edits === savedEdits.current) return;
+    savedEdits.current = edits;
+    persist(state);
+  }, [state, hydrated, edits]);
 
   const active = state.categories.find((c) => c.id === state.activeId) ?? null;
 

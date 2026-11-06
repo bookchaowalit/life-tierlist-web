@@ -220,6 +220,20 @@ describe('TierBoard', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe(second);
   });
 
+  it('saves an edit once, so a later category switch does not overwrite a newer save', () => {
+    render(<TierBoard initial={seed()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ส้มตำ' }));
+    fireEvent.click(within(row('S')).getByRole('button', { name: 'ย้ายมาที่นี่' }));
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    // Another tab saves a newer board; its storage event has not reached this tab yet.
+    let n = 0;
+    const newer = JSON.stringify({ version: 1, activeId: null, categories: [makeCategory('ใหม่', [], () => `e-${++n}`)] });
+    localStorage.setItem(STORAGE_KEY, newer);
+    fireEvent.click(screen.getByRole('button', { name: 'ภาพรวม' }));
+    fireEvent.click(screen.getByRole('button', { name: 'อาหารไทย' }));
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(newer);
+  });
+
   it('exports and imports JSON backups', async () => {
     const createObjectURL = vi.fn(() => 'blob:x');
     const revokeObjectURL = vi.fn();
