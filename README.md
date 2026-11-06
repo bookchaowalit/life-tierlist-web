@@ -2,6 +2,8 @@
 
 Tier list แยกตามหมวด จัดอันดับ S–D ได้หลายหมวด แล้วดูภาพรวมทุกหมวดในหน้าเดียว ข้อมูลเก็บในเบราว์เซอร์ (`localStorage`) ไม่มี server รายละเอียดใน [PRODUCT.md](PRODUCT.md)
 
+เว็บจริง: https://life-tierlist-web.vercel.app (push ขึ้น `main` แล้ว Vercel deploy เอง)
+
 ```bash
 npm install
 npm run dev
