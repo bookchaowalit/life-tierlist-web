@@ -156,13 +156,13 @@ describe('TierBoard', () => {
     let n = 0;
     const newer = { version: 1, activeId: null, categories: [makeCategory('จากแท็บอื่น', ['Y'], () => `o-${++n}`)] };
     const json = JSON.stringify(newer);
-    localStorage.setItem(STORAGE_KEY, json);
     act(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: 'other', newValue: '{}' }));
       window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: null }));
       window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: '{' }));
     });
     expect(screen.queryByRole('button', { name: 'จากแท็บอื่น' })).toBeNull();
+    localStorage.setItem(STORAGE_KEY, json);
     act(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: json }));
     });
@@ -177,10 +177,47 @@ describe('TierBoard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ภาษาโปรแกรม' }));
     const other = { ...seed(), activeId: seed().categories[0].id };
     other.categories[1] = { ...other.categories[1], name: 'ภาษา' };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(other));
     act(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: JSON.stringify(other) }));
     });
     expect(screen.getByRole('heading', { level: 2, name: 'ภาษา' })).toBeTruthy();
+  });
+
+  it('applies the latest save, not a late event\'s older snapshot, and never writes it back', () => {
+    render(<TierBoard initial={seed()} />);
+    let n = 0;
+    const older = { version: 1, activeId: null, categories: [makeCategory('เก่า', ['X'], () => `a-${++n}`)] };
+    const newer = { version: 1, activeId: null, categories: [makeCategory('ใหม่', ['Y'], () => `b-${++n}`)] };
+    const newerJson = JSON.stringify(newer);
+    // The other tab saved twice before this tab saw the first event.
+    localStorage.setItem(STORAGE_KEY, newerJson);
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: JSON.stringify(older) }));
+    });
+    expect(screen.getByRole('button', { name: 'ใหม่' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'เก่า' })).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(newerJson);
+  });
+
+  it('does not write a synced board back even if storage changed again since', () => {
+    render(<TierBoard initial={seed()} />);
+    let n = 0;
+    const first = JSON.stringify({ version: 1, activeId: null, categories: [makeCategory('หนึ่ง', [], () => `c-${++n}`)] });
+    const second = JSON.stringify({ version: 1, activeId: null, categories: [makeCategory('สอง', [], () => `d-${++n}`)] });
+    localStorage.setItem(STORAGE_KEY, first);
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: first }));
+    });
+    localStorage.setItem(STORAGE_KEY, second);
+    setItem.mockClear();
+    // Switching categories is not an edit, so the synced board is not written over "second".
+    fireEvent.click(screen.getByRole('button', { name: 'หนึ่ง' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ภาพรวม' }));
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(second);
   });
 
   it('exports and imports JSON backups', async () => {

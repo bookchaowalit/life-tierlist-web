@@ -58,24 +58,33 @@ function safeStorage(): Storage | undefined {
   }
 }
 
-type Board = { state: State; hydrated: boolean };
+// dirty: the current state came from an edit in this tab. Only such states are written, so a
+// board loaded from storage (or synced from another tab) is never written back over it.
+type Board = { state: State; hydrated: boolean; dirty: boolean };
 type BoardAction = Action | { type: 'hydrate'; saved: State | null } | { type: 'sync'; saved: State };
 
 function boardReducer(b: Board, a: BoardAction): Board {
-  if (a.type === 'hydrate') return { state: a.saved ?? b.state, hydrated: true };
+  if (a.type === 'hydrate') return { state: a.saved ?? b.state, hydrated: true, dirty: false };
   if (a.type === 'sync') {
     // Another tab saved: take its board but keep this tab's open category when it still exists.
     const keep = b.state.activeId === null || a.saved.categories.some((c) => c.id === b.state.activeId);
-    return { ...b, state: keep ? { ...a.saved, activeId: b.state.activeId } : a.saved };
+    return { ...b, dirty: false, state: keep ? { ...a.saved, activeId: b.state.activeId } : a.saved };
   }
-  return { ...b, state: reducer(b.state, a, newId) };
+  const state = reducer(b.state, a, newId);
+  if (state === b.state) return b;
+  // Opening another category is not an edit, so it never writes over a newer board.
+  return { ...b, state, dirty: b.dirty || state.categories !== b.state.categories };
 }
 
 export default function TierBoard({ initial }: { initial?: State }) {
   // hydrated lives in committed state, not a ref, so a Strict Mode effect replay before the
   // saved board is read can never write the seed board over it.
-  const [board, dispatch] = useReducer(boardReducer, { state: initial ?? seedState(), hydrated: false });
-  const { state, hydrated } = board;
+  const [board, dispatch] = useReducer(boardReducer, {
+    state: initial ?? seedState(),
+    hydrated: false,
+    dirty: false,
+  });
+  const { state, hydrated, dirty } = board;
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +92,8 @@ export default function TierBoard({ initial }: { initial?: State }) {
     // Other tabs' saves arrive here, so a stale tab never writes an old board over a newer one.
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY || e.newValue === null) return;
-      const saved = loadSaved({ getItem: () => e.newValue });
+      // Read what is stored now, not e.newValue: events can arrive late, after newer saves.
+      const saved = loadSaved(safeStorage());
       if (saved) dispatch({ type: 'sync', saved });
     };
     window.addEventListener('storage', onStorage);
@@ -91,8 +101,8 @@ export default function TierBoard({ initial }: { initial?: State }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated) persist(state);
-  }, [state, hydrated]);
+    if (hydrated && dirty) persist(state);
+  }, [state, hydrated, dirty]);
 
   const active = state.categories.find((c) => c.id === state.activeId) ?? null;
 
