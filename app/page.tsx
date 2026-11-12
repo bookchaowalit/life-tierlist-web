@@ -27,6 +27,13 @@ export default function Home() {
           <TierBoard />
         </div>
       </main>
+      <footer className="mt-12 border-t border-border">
+        <nav aria-label="ลิงก์ท้ายหน้า" className="mx-auto flex max-w-5xl flex-wrap gap-x-4 px-4 py-4 text-sm text-fg-muted sm:px-6">
+          <a href="https://bookchaowalit.com/privacy" className="inline-flex min-h-11 items-center">ความเป็นส่วนตัว</a>
+          <a href="https://monitor.bookchaowalit.com/" className="inline-flex min-h-11 items-center">สถานะระบบ</a>
+          <a href="mailto:bookchaowalit.work@gmail.com" className="inline-flex min-h-11 items-center">ติดต่อ</a>
+        </nav>
+      </footer>
     </>
   );
 }

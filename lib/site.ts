@@ -6,3 +6,6 @@ export const site = {
   description: 'สร้างหมวด เพิ่มของ ลากหรือแตะเพื่อจัดแถว ข้อมูลเก็บในเบราว์เซอร์ของคุณ ไม่ส่งไปที่ไหน',
   publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '',
 } as const;
+
+/** Public origin for robots.txt, the sitemap and Open Graph; the Vercel URL when the env var is unset. */
+export const siteOrigin = (site.publicUrl || 'https://life-tierlist-web.vercel.app').replace(/\/$/, '');

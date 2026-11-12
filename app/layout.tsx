@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   ...(site.publicUrl ? { metadataBase: new URL(site.publicUrl) } : {}),
   title: { default: `${site.name} — ${site.thaiName}`, template: `%s — ${site.name}` },
   description: site.promise,
-  openGraph: { type: 'website', locale: 'th_TH', siteName: site.name, description: site.promise },
+  openGraph: { type: 'website', locale: 'th_TH', siteName: site.name, title: `${site.name} — ${site.thaiName}`, description: site.promise },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
