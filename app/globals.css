@@ -20,6 +20,11 @@
   --text-6xl--line-height: var(--leading-thai-heading);
 }
 
+/* App-only token, next to the floor's color roles (see app-theme.css). */
+@theme inline {
+  --color-border-strong: var(--color-border-strong);
+}
+
 /* Preflight hard-codes line-height 1.5 on html; text without a size utility inherits this. */
 @layer base {
   body { line-height: var(--leading-thai); }
@@ -37,5 +42,27 @@
     border-radius: var(--radius-md); font-weight: 600; text-decoration: none;
   }
   .btn-primary { color: var(--color-accent-fg); background: var(--color-accent); }
-  .btn-secondary { color: var(--color-fg); border: 1px solid var(--color-border); }
+  .btn-secondary { color: var(--color-fg); background: var(--color-surface); border: 1px solid var(--color-border-strong); }
+  .btn-ghost { color: var(--color-fg); }
+  /* Destructive actions: red text and edge, or solid red for the final confirm. */
+  .btn-danger { color: var(--color-danger); background: var(--color-surface); border: 1px solid var(--color-danger); }
+  .btn-danger-solid { color: #ffffff; background: var(--color-danger); }
+  .btn:active { transform: translateY(1px); }
+  @media (hover: hover) {
+    .btn-primary:hover { background: var(--color-accent-hover); }
+    .btn-secondary:hover, .btn-ghost:hover { background: var(--color-bg); }
+    .btn-danger:hover { background: var(--color-danger-tint); }
+    .btn-danger-solid:hover { background: #912018; }
+  }
+  .btn-primary:active { background: var(--color-accent-hover); }
+  .btn-secondary:active, .btn-ghost:active { background: var(--color-border); }
+  .btn-danger:active { background: var(--color-danger-tint); }
+
+  /* In-app replacement for window.prompt/confirm (app/app-dialog.tsx). */
+  .app-dialog {
+    width: min(28rem, calc(100vw - 32px)); max-width: none; margin: auto; padding: 24px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    color: var(--color-fg); background: var(--color-surface); box-shadow: var(--shadow-lg);
+  }
+  .app-dialog::backdrop { background: rgb(29 33 31 / 0.45); }
 }

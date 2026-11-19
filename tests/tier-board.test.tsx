@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TierBoard, { STORAGE_KEY, loadSaved, newId } from '@/app/tier-board';
 import { initialState, makeCategory } from '@/lib/tierlist';
@@ -11,6 +11,15 @@ function seed() {
 }
 
 const row = (name: string) => screen.getByRole('list', { name: `แถว ${name}` });
+const dialog = () => screen.getByRole('dialog');
+const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'จัดการหมวด' }));
+/** Fill the in-app prompt and submit it. */
+function answer(value: string) {
+  const d = dialog();
+  fireEvent.change(within(d).getByRole('textbox'), { target: { value } });
+  fireEvent.submit(d.querySelector('form')!);
+}
+const announcer = () => screen.getByTestId('board-announcer');
 
 beforeEach(() => {
   localStorage.clear();
@@ -27,7 +36,13 @@ describe('TierBoard', () => {
     fireEvent.click(within(row('S')).getByRole('button', { name: 'ย้ายมาที่นี่' }));
     expect(within(row('S')).getByRole('button', { name: 'ส้มตำ' })).toBeTruthy();
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    expect(saved.categories[0].tiers[0].itemIds).toHaveLength(1);
+    // The first-run sample already ranks one dish in S.
+    expect(saved.categories[0].tiers[0].itemIds).toHaveLength(2);
+    expect(announcer().getAttribute('aria-live')).toBe('polite');
+    expect(announcer().textContent).toBe('ย้าย ส้มตำ ไปแถว S แล้ว');
+    fireEvent.click(within(row('S')).getByRole('button', { name: 'ส้มตำ' }));
+    fireEvent.click(within(row('ยังไม่จัด')).getByRole('button', { name: 'ย้ายมาที่นี่' }));
+    expect(announcer().textContent).toBe('ย้าย ส้มตำ ไปแถว ยังไม่จัด แล้ว');
   });
 
   it('toggles and cancels a selection, and deletes the selected item', () => {
@@ -40,8 +55,11 @@ describe('TierBoard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }));
     expect(screen.queryByRole('button', { name: 'ลบชิ้นนี้' })).toBeNull();
     fireEvent.click(item()!);
-    fireEvent.click(screen.getByRole('button', { name: 'ลบชิ้นนี้' }));
+    const del = screen.getByRole('button', { name: 'ลบชิ้นนี้' });
+    expect(del.className).toContain('btn-danger');
+    fireEvent.click(del);
     expect(item()).toBeNull();
+    expect(announcer().textContent).toBe('ลบ ผัดไทย แล้ว');
   });
 
   it('moves an item by drag and drop, onto a row and before another item', () => {
@@ -61,7 +79,8 @@ describe('TierBoard', () => {
     drag('ต้มยำกุ้ง');
     fireEvent.drop(within(row('A')).getByRole('button', { name: 'ข้าวซอย' }).parentElement!, { dataTransfer });
     const labels = within(row('A')).getAllByRole('button').map((b) => b.textContent);
-    expect(labels).toEqual(['ต้มยำกุ้ง', 'ข้าวซอย']);
+    expect(labels).toEqual(['ข้าวมันไก่', 'ต้มยำกุ้ง', 'ข้าวซอย']);
+    expect(announcer().textContent).toBe('ย้าย ต้มยำกุ้ง ไปแถว A แล้ว');
 
     data['text/plain'] = 'ghost';
     fireEvent.drop(row('B'), { dataTransfer });
@@ -78,40 +97,126 @@ describe('TierBoard', () => {
     expect((input as HTMLInputElement).value).toBe('');
   });
 
-  it('renames the category and a tier, resets ranks, removes the category', () => {
+  it('renames the category and a tier, resets ranks, removes the category, all in app dialogs', () => {
     const prompt = vi.spyOn(window, 'prompt');
     const confirm = vi.spyOn(window, 'confirm');
     render(<TierBoard />);
 
-    prompt.mockReturnValueOnce('อาหาร');
-    fireEvent.click(screen.getByRole('button', { name: 'แก้ชื่อ' }));
+    openMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'แก้ชื่อหมวด' }));
+    expect(screen.getByRole('heading', { name: 'แก้ชื่อหมวด' })).toBeTruthy();
+    expect((within(dialog()).getByLabelText('ชื่อหมวด') as HTMLInputElement).value).toBe('อาหารไทย');
+    answer('อาหาร');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: 'อาหาร' })).toBeTruthy();
 
-    prompt.mockReturnValueOnce('เทพ');
     fireEvent.click(screen.getByRole('button', { name: 'แถว S แตะเพื่อแก้ชื่อ' }));
+    const tierInput = within(dialog()).getByLabelText('ชื่อแถว (ไม่เกิน 12 ตัวอักษร)') as HTMLInputElement;
+    expect(tierInput.maxLength).toBe(12);
+    answer('   ');
+    expect(dialog()).toBeTruthy();
+    answer('เทพ');
     expect(screen.getByRole('list', { name: 'แถว เทพ' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'ส้มตำ' }));
     fireEvent.click(within(row('เทพ')).getByRole('button', { name: 'ย้ายมาที่นี่' }));
+    openMenu();
     fireEvent.click(screen.getByRole('button', { name: 'ล้างอันดับ' }));
     expect(within(row('ยังไม่จัด')).getByRole('button', { name: 'ส้มตำ' })).toBeTruthy();
+    expect(announcer().textContent).toContain('ยังไม่จัด');
 
-    confirm.mockReturnValueOnce(false);
-    fireEvent.click(screen.getByRole('button', { name: 'ลบหมวด' }));
+    openMenu();
+    const del = screen.getByRole('button', { name: 'ลบหมวด' });
+    expect(del.className).toContain('btn-danger');
+    fireEvent.click(del);
+    expect(screen.getByRole('heading', { name: 'ลบหมวด "อาหาร"?' })).toBeTruthy();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'ยกเลิก' }));
     expect(screen.getByRole('heading', { level: 2, name: 'อาหาร' })).toBeTruthy();
-    confirm.mockReturnValueOnce(true);
+    openMenu();
     fireEvent.click(screen.getByRole('button', { name: 'ลบหมวด' }));
+    const confirmBtn = within(dialog()).getByRole('button', { name: 'ลบหมวด' });
+    expect(confirmBtn.className).toContain('btn-danger-solid');
+    fireEvent.click(confirmBtn);
     expect(screen.getByRole('heading', { level: 2, name: 'ภาษาโปรแกรม' })).toBeTruthy();
+    expect(announcer().textContent).toBe('ลบหมวด อาหาร แล้ว');
+    expect(prompt).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
   });
 
-  it('adds a category from the tab bar, and skips an empty name', () => {
-    const prompt = vi.spyOn(window, 'prompt').mockReturnValueOnce('').mockReturnValueOnce('หนัง');
+  it('adds a category from the tab bar, and cancelling adds nothing', () => {
     render(<TierBoard />);
     fireEvent.click(screen.getByRole('button', { name: '+ หมวดใหม่' }));
-    expect(screen.queryByRole('button', { name: 'หนัง' })).toBeNull();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'ยกเลิก' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getAllByRole('button', { name: /ภาพรวม|อาหารไทย|ภาษาโปรแกรม/ })).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: '+ หมวดใหม่' }));
+    answer('หนัง');
     expect(screen.getByRole('button', { name: 'หนัง' }).getAttribute('aria-current')).toBe('page');
-    expect(prompt).toHaveBeenCalledTimes(2);
+  });
+
+  it('closes the dialog with Esc and returns focus to the button that opened it', async () => {
+    render(<TierBoard />);
+    const trigger = screen.getByRole('button', { name: '+ หมวดใหม่' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const d = dialog();
+    expect(d.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(document.activeElement).toBe(within(d).getByRole('textbox'));
+    fireEvent(d, new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it('uses the native modal dialog where the browser has one', async () => {
+    const proto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
+    const showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute('open', '');
+    });
+    const close = vi.fn(function (this: HTMLDialogElement) {
+      this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
+    });
+    Object.assign(proto, { showModal, close });
+    try {
+      render(<TierBoard />);
+      fireEvent.click(screen.getByRole('button', { name: '+ หมวดใหม่' }));
+      expect(showModal).toHaveBeenCalledTimes(1);
+      answer('เกม');
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('heading', { level: 2, name: 'เกม' })).toBeTruthy();
+      // The browser closing it on its own (second Esc) also cleans up.
+      fireEvent.click(screen.getByRole('button', { name: '+ หมวดใหม่' }));
+      fireEvent(dialog(), new Event('close'));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      delete proto.showModal;
+      delete proto.close;
+    }
+  });
+
+  it('sends focus back to the open tab when the opener is gone', async () => {
+    render(<TierBoard />);
+    openMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'ลบหมวด' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'ลบหมวด' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'ภาษาโปรแกรม' })));
+  });
+
+  it('closes the category menu with Esc or a click outside', () => {
+    render(<TierBoard />);
+    const toggle = screen.getByRole('button', { name: 'จัดการหมวด' });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'แก้ชื่อหมวด' }));
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+    fireEvent.click(toggle);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('button', { name: 'แก้ชื่อหมวด' })).toBeNull();
   });
 
   it('shows the overview with counts and opens a category from it', () => {
@@ -120,17 +225,17 @@ describe('TierBoard', () => {
     fireEvent.click(within(row('B')).getByRole('button', { name: 'ย้ายมาที่นี่' }));
     fireEvent.click(screen.getByRole('button', { name: 'ภาพรวม' }));
     expect(screen.getByRole('heading', { name: 'ภาพรวมทุกหมวด' })).toBeTruthy();
-    expect(screen.getByText('จัดแล้ว 1/6')).toBeTruthy();
+    expect(screen.getByText('จัดแล้ว 3/6')).toBeTruthy();
     expect(screen.getAllByRole('img')[0].getAttribute('aria-label')).toContain('B 1');
     fireEvent.click(screen.getAllByRole('button', { name: 'เปิดหมวดนี้' })[1]);
     expect(screen.getByRole('heading', { level: 2, name: 'ภาษาโปรแกรม' })).toBeTruthy();
   });
 
   it('shows an empty overview with a create button', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('เกม');
     render(<TierBoard initial={{ version: 1, activeId: null, categories: [] }} />);
     expect(screen.getByRole('heading', { name: 'ยังไม่มีหมวด' })).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: '+ หมวดใหม่' })[1]);
+    answer('เกม');
     expect(screen.getByRole('heading', { level: 2, name: 'เกม' })).toBeTruthy();
   });
 
@@ -239,12 +344,13 @@ describe('TierBoard', () => {
     const revokeObjectURL = vi.fn();
     Object.assign(URL, { createObjectURL, revokeObjectURL });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    const confirm = vi.spyOn(window, 'confirm');
     render(<TierBoard initial={seed()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'ดาวน์โหลด JSON' }));
     expect(click).toHaveBeenCalled();
-    expect(screen.getByText('ดาวน์โหลดไฟล์สำรองแล้ว')).toBeTruthy();
+    const ok = screen.getByText('ดาวน์โหลดไฟล์สำรองแล้ว').parentElement!;
+    expect(ok.className).toContain('text-success');
+    expect(ok.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
 
     const fileInput = document.querySelector('input[type=file]') as HTMLInputElement;
     const clickInput = vi.spyOn(fileInput, 'click').mockImplementation(() => {});
@@ -262,16 +368,17 @@ describe('TierBoard', () => {
       });
     };
     await upload('not json');
-    expect(screen.getByText('ไฟล์นี้ไม่ใช่ไฟล์สำรองของ Tier List')).toBeTruthy();
+    expect(screen.getByText('ไฟล์นี้ไม่ใช่ไฟล์สำรองของ Tier List').parentElement!.className).toContain('text-danger');
 
     let n = 0;
     const backup = { version: 1, activeId: null, categories: [makeCategory('นำเข้า', [], () => `i-${++n}`)] };
-    confirm.mockReturnValueOnce(false);
     await upload(JSON.stringify(backup));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'ยกเลิก' }));
     expect(screen.queryByText('นำเข้าแล้ว')).toBeNull();
-    confirm.mockReturnValueOnce(true);
     await upload(JSON.stringify(backup));
-    expect(screen.getByText('นำเข้าแล้ว')).toBeTruthy();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'แทนที่ข้อมูล' }));
+    expect(screen.getByText('นำเข้าแล้ว').parentElement!.className).toContain('text-success');
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'นำเข้า JSON' })));
     expect(screen.getByRole('button', { name: 'นำเข้า' })).toBeTruthy();
 
     await act(async () => {

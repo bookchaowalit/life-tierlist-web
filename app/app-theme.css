@@ -11,6 +11,10 @@
   --color-accent: #1f5f4a;
   --color-accent-fg: #ffffff;
   --color-border: #c9cbc4;
+  /* Edges of inputs and buttons (WCAG 1.4.11): 4.0:1 on surface, 3.7:1 on bg. */
+  --color-border-strong: #7c8079;
+  --color-accent-hover: #184c3b;
+  --color-danger-tint: #fef3f2;
   --color-focus: #1f5f4a;
 
   /* next/font/local exposes the Noto faces as these variables. */

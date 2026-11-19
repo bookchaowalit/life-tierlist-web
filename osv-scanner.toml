@@ -14,3 +14,12 @@ request input, and not part of the Next.js runtime bundle. Re-check when braces 
 id = "GHSA-g3hv-75wg-m249"
 ignoreUntil = 2027-02-01
 reason = "minimatch pattern amplification DoS; reached only with repo- or tool-authored glob patterns at lint/build time. Fixed only in minimatch 11, outside every consumer's range. Added 2026-11-03."
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-01-18T00:00:00Z
+reason = """picomatch <=4.0.7 ReDoS through single-branch repeated extglobs. No fixed release exists \
+(4.0.7 is the latest). Build and test tooling only: @sentry/nextjs -> @rollup/plugin-commonjs, vite, \
+vitest, tinyglobby (eslint/typescript-eslint) and micromatch, all matching glob patterns from this \
+repository's own config at build, lint or test time, never request input, and not part of the \
+Next.js runtime bundle. Re-check when picomatch ships a fix."""

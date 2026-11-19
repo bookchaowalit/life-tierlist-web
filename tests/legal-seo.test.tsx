@@ -9,10 +9,11 @@ const { metadata } = await import("@/app/layout");
 
 // Interface coverage (ADR-0015 §1.2, free tool): legal link, status, contact, and SEO basics.
 describe("footer and SEO basics", () => {
-  it("home ends with a footer linking privacy, status and contact", () => {
+  it("home ends with a footer linking the hub, privacy, status and contact", () => {
     const html = renderToString(<Home />);
     expect(html).toContain("<footer");
     expect(html).toContain('href="https://bookchaowalit.com/privacy"');
+    expect(html).toMatch(/href="https:\/\/bookchaowalit.com\/"[^>]*>bookchaowalit.com<\/a>/);
     expect(html).toContain('href="https://monitor.bookchaowalit.com/"');
     expect(html).toContain('href="mailto:bookchaowalit.work@gmail.com"');
   });

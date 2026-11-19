@@ -15,20 +15,21 @@ export default function Home() {
           </a>
         </div>
       </header>
-      <main id="main-content" className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <main id="main-content" className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-12">
         <section aria-labelledby="hero-title" className="max-w-2xl">
           <p className="text-sm font-semibold text-accent">{site.thaiName}</p>
-          <h1 id="hero-title" className="mt-2 font-serif text-2xl font-bold sm:text-4xl">
+          <h1 id="hero-title" className="mt-1 font-serif text-xl font-bold sm:mt-2 sm:text-4xl">
             {site.promise}
           </h1>
-          <p className="mt-3 text-fg-muted">{site.description}</p>
+          <p className="mt-3 hidden text-fg-muted sm:block">{site.description}</p>
         </section>
-        <div className="mt-8">
+        <div className="mt-4 sm:mt-8">
           <TierBoard />
         </div>
       </main>
       <footer className="mt-12 border-t border-border">
         <nav aria-label="ลิงก์ท้ายหน้า" className="mx-auto flex max-w-5xl flex-wrap gap-x-4 px-4 py-4 text-sm text-fg-muted sm:px-6">
+          <a href="https://bookchaowalit.com/" className="inline-flex min-h-11 items-center">bookchaowalit.com</a>
           <a href="https://bookchaowalit.com/privacy" className="inline-flex min-h-11 items-center">ความเป็นส่วนตัว</a>
           <a href="https://monitor.bookchaowalit.com/" className="inline-flex min-h-11 items-center">สถานะระบบ</a>
           <a href="mailto:bookchaowalit.work@gmail.com" className="inline-flex min-h-11 items-center">ติดต่อ</a>

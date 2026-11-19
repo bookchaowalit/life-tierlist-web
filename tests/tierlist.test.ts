@@ -43,6 +43,16 @@ describe('makeCategory / initialState', () => {
     expect(s.categories).toHaveLength(2);
     expect(s.activeId).toBe(s.categories[0].id);
   });
+
+  it('ranks a few samples for first-time visitors and leaves the rest unranked', () => {
+    const s = initialState(ids());
+    const label = (c: (typeof s.categories)[number], id: string) => c.items[id].label;
+    const [food, lang] = s.categories;
+    expect(food.tiers.map((t) => t.itemIds.map((id) => label(food, id)))).toEqual([['แกงเขียวหวาน'], ['ข้าวมันไก่'], [], [], []]);
+    expect(food.pool).toHaveLength(4);
+    expect(lang.tiers.map((t) => t.itemIds.length)).toEqual([1, 2, 0, 1, 0]);
+    expect(lang.pool.map((id) => label(lang, id))).toEqual(['Rust', 'PHP']);
+  });
 });
 
 describe('reducer', () => {

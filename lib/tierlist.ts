@@ -67,9 +67,31 @@ export function makeCategory(name: string, labels: string[], newId: IdFn): Categ
   };
 }
 
+/** Move sample items (by label) from the pool into tier rows, by tier position. */
+function placeSamples(c: Category, rows: string[][]): Category {
+  const byLabel = new Map(Object.values(c.items).map((it) => [it.label, it.id]));
+  const placed = new Set<string>();
+  const tiers = c.tiers.map((t, i) => {
+    const ids = (rows[i] ?? []).map((label) => byLabel.get(label)).filter((id): id is string => !!id);
+    ids.forEach((id) => placed.add(id));
+    return { ...t, itemIds: ids };
+  });
+  return { ...c, tiers, pool: c.pool.filter((id) => !placed.has(id)) };
+}
+
+/**
+ * The board a first-time visitor sees. A few samples are already ranked so the tier list
+ * shows what a finished row looks like; saved boards never pass through here.
+ */
 export function initialState(newId: IdFn): State {
-  const food = makeCategory('อาหารไทย', ['ข้าวมันไก่', 'ต้มยำกุ้ง', 'ส้มตำ', 'ผัดไทย', 'แกงเขียวหวาน', 'ข้าวซอย'], newId);
-  const lang = makeCategory('ภาษาโปรแกรม', ['TypeScript', 'Python', 'Go', 'Rust', 'Java', 'PHP'], newId);
+  const food = placeSamples(
+    makeCategory('อาหารไทย', ['ข้าวมันไก่', 'ต้มยำกุ้ง', 'ส้มตำ', 'ผัดไทย', 'แกงเขียวหวาน', 'ข้าวซอย'], newId),
+    [['แกงเขียวหวาน'], ['ข้าวมันไก่']],
+  );
+  const lang = placeSamples(
+    makeCategory('ภาษาโปรแกรม', ['TypeScript', 'Python', 'Go', 'Rust', 'Java', 'PHP'], newId),
+    [['TypeScript'], ['Python', 'Go'], [], ['Java']],
+  );
   return { version: 1, activeId: food.id, categories: [food, lang] };
 }
 
