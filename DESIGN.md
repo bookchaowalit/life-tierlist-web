@@ -14,7 +14,12 @@ Vendored `app/design-floor/tokens.css` (`css-vars` 1.0.0) และ `app/design-
 | `--color-fg-muted` | `#555b57` | ข้อความรอง (≥ 4.5:1 บน bg และ surface) |
 | `--color-accent` / `--color-focus` | `#1f5f4a` | ปุ่มหลัก, ลิงก์เด่น, focus ring |
 | `--color-accent-fg` | `#ffffff` | ข้อความบนปุ่มหลัก |
-| `--color-border` | `#c9cbc4` | เส้นขอบ |
+| `--color-border` | `#c9cbc4` | เส้นแบ่งและขอบตกแต่ง |
+| `--color-border-strong` | `#7c8079` | ขอบ input/ปุ่ม (contrast ≥ 3:1 ตาม WCAG 1.4.11) |
+| `--color-accent-hover` | `#184c3b` | สถานะ hover/active ของปุ่มหลัก |
+| `--color-danger` | `#b42318` | ข้อความและขอบของการกระทำลบ; token จาก design floor |
+| `--color-danger-tint` | `#fef3f2` | พื้น hover/active ของปุ่มลบ |
+| `--color-success` | `#127a3e` | สถานะสำเร็จ; token จาก design floor |
 | `--font-sans` / `--font-serif` | Noto Sans Thai / Noto Serif Thai ผ่าน `next/font/local` | |
 
 Line-height: ทุกขนาด text ของ Tailwind ใช้ `--leading-thai` (1.7) หรือ `--leading-thai-heading` (1.35) แทนค่า default (`app/globals.css`)
