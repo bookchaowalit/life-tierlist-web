@@ -47,9 +47,13 @@ npm run dev
 
 ```bash
 npm run lint && npm run typecheck && npx vitest run --coverage && npm run check
-# The checker lives in platform-ops-cli: found (or cloned) by the empire helper, also from a worktree.
-TOOLS="${SOLO_ARCHITECTURE_TOOLS:-$(python3 ~/bookchaowalit-empire/infra/scripts/github/repo-path.py bookchaowalit/platform-ops-cli --clone)/architecture}"
-git -C "$TOOLS" pull --ff-only   # an older checkout may predate architecture/
+# The checker lives in platform-ops-cli. Without SOLO_ARCHITECTURE_TOOLS the empire helper finds (or
+# clones) it, also from a worktree, and the checkout is updated (an older one may predate architecture/).
+if [ -z "${SOLO_ARCHITECTURE_TOOLS:-}" ]; then
+  OPS="$(python3 ~/bookchaowalit-empire/infra/scripts/github/repo-path.py bookchaowalit/platform-ops-cli --clone)" \
+    && git -C "$OPS" pull --ff-only && SOLO_ARCHITECTURE_TOOLS="$OPS/architecture"
+fi
+TOOLS="${SOLO_ARCHITECTURE_TOOLS:?platform-ops-cli not found: see the helper message above}"
 # One-time: its own dependencies and Chromium. A fresh Linux machine also needs the system libraries:
 # (cd "$TOOLS/design-floor" && npx playwright install-deps chromium) with sudo; without sudo (WSL) see
 # "Run the tests here" in "$TOOLS/design-floor/README.md".
