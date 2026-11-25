@@ -47,7 +47,9 @@ npm run dev
 
 ```bash
 npm run lint && npm run typecheck && npx vitest run --coverage && npm run check
-node "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}/design-floor/check.mjs" --config design-floor.json
+# one-time per platform-ops-cli checkout: the checker's own dependencies and Chromium
+(cd "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor && npm ci && npx playwright install --only-shell chromium)
+node "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor/check.mjs --config design-floor.json
 ```
 
 UI change ทุกครั้ง: รัน `ui_review.mjs` ที่ 320/375/768/1024/1440 ดูทุกภาพ แล้ว `ui_signoff.py` ก่อน push (hook จะ block ถ้ายังไม่ sign off)
