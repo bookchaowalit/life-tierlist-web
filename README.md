@@ -49,7 +49,7 @@ npm run dev
 npm run lint && npm run typecheck && npx vitest run --coverage && npm run check
 # one-time per platform-ops-cli checkout: the checker's own dependencies and Chromium
 (cd "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor && npm ci && npx playwright install --only-shell chromium)
-# Chromium needs system libraries: on a fresh Linux machine run `npx playwright install-deps chromium` (sudo) once; without sudo (WSL) see "Run the tests here" in that folder's README.md
+# Chromium needs system libraries: on a fresh Linux machine run `(cd "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor && npx playwright install-deps chromium)` (sudo) once; without sudo (WSL) see "Run the tests here" in that folder's README.md
 node "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor/check.mjs --config design-floor.json
 ```
 
