@@ -47,10 +47,14 @@ npm run dev
 
 ```bash
 npm run lint && npm run typecheck && npx vitest run --coverage && npm run check
-# one-time per platform-ops-cli checkout: the checker's own dependencies and Chromium
-(cd "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor && npm ci && npx playwright install --only-shell chromium)
-# Chromium needs system libraries: on a fresh Linux machine run `(cd "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor && npx playwright install-deps chromium)` (sudo) once; without sudo (WSL) see "Run the tests here" in that folder's README.md
-node "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}"/design-floor/check.mjs --config design-floor.json
+# The checker lives in platform-ops-cli: found (or cloned) by the empire helper, also from a worktree.
+TOOLS="${SOLO_ARCHITECTURE_TOOLS:-$(python3 ~/bookchaowalit-empire/infra/scripts/github/repo-path.py bookchaowalit/platform-ops-cli --clone)/architecture}"
+git -C "$TOOLS" pull --ff-only   # an older checkout may predate architecture/
+# One-time: its own dependencies and Chromium. A fresh Linux machine also needs the system libraries:
+# (cd "$TOOLS/design-floor" && npx playwright install-deps chromium) with sudo; without sudo (WSL) see
+# "Run the tests here" in "$TOOLS/design-floor/README.md".
+(cd "$TOOLS/design-floor" && npm ci && npx playwright install --only-shell chromium)
+node "$TOOLS/design-floor/check.mjs" --config design-floor.json
 ```
 
 UI change ทุกครั้ง: รัน `ui_review.mjs` ที่ 320/375/768/1024/1440 ดูทุกภาพ แล้ว `ui_signoff.py` ก่อน push (hook จะ block ถ้ายังไม่ sign off)
