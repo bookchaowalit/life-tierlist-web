@@ -47,7 +47,7 @@ npm run dev
 
 ```bash
 npm run lint && npm run typecheck && npx vitest run --coverage && npm run check
-node ../architecture-docs/design-floor/check.mjs --config design-floor.json
+node "${SOLO_ARCHITECTURE_TOOLS:-../../platform-ops-cli/architecture}/design-floor/check.mjs" --config design-floor.json
 ```
 
 UI change ทุกครั้ง: รัน `ui_review.mjs` ที่ 320/375/768/1024/1440 ดูทุกภาพ แล้ว `ui_signoff.py` ก่อน push (hook จะ block ถ้ายังไม่ sign off)
@@ -66,4 +66,4 @@ UI change ทุกครั้ง: รัน `ui_review.mjs` ที่ 320/375/
 
 ## อัปเดตไฟล์ design-floor
 
-copy `tokens.css` และ `tailwind/v4.css` เวอร์ชันใหม่จาก `architecture-docs/design-floor/` ทับของเดิมทั้งไฟล์ อ่าน `CHANGELOG.md` ที่นั่นก่อน (major = เปลี่ยนชื่อ token)
+copy `tokens.css` และ `tailwind/v4.css` เวอร์ชันใหม่จาก `platform-ops-cli/architecture/design-floor/` ทับของเดิมทั้งไฟล์ อ่าน `CHANGELOG.md` ที่นั่นก่อน (major = เปลี่ยนชื่อ token)
